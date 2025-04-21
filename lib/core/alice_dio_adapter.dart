@@ -13,6 +13,11 @@ import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 
 class AliceDioAdapter extends InterceptorsWrapper with AliceAdapter {
+  /// Won't store payload/response data in release mode to:
+  /// 1. reduce memory usage
+  /// 2. HIPAA compliance
+  static const bool includeAPIDetails = !kReleaseMode;
+
   /// Handles dio request and creates alice http call based on it
   @override
   void onRequest(RequestOptions options, RequestInterceptorHandler handler) {
@@ -37,13 +42,9 @@ class AliceDioAdapter extends InterceptorsWrapper with AliceAdapter {
     final request = AliceHttpRequest();
 
     final dynamic data = options.data;
-    if (data == null) {
-      request
-        ..size = 0
-        ..body = '';
-    } else {
+
+    if (includeAPIDetails && data != null) {
       if (data is FormData) {
-        // ignore: avoid_dynamic_calls
         request.body += 'Form data';
 
         if (data.fields.isNotEmpty == true) {
@@ -73,6 +74,10 @@ class AliceDioAdapter extends InterceptorsWrapper with AliceAdapter {
           ..size = utf8.encode(data.toString()).length
           ..body = data;
       }
+    } else {
+      request
+        ..size = 0
+        ..body = '';
     }
 
     request
@@ -97,14 +102,14 @@ class AliceDioAdapter extends InterceptorsWrapper with AliceAdapter {
   ) {
     final httpResponse = AliceHttpResponse()..status = response.statusCode;
 
-    if (response.data == null) {
-      httpResponse
-        ..body = ''
-        ..size = 0;
-    } else {
+    if (includeAPIDetails && response.data != null) {
       httpResponse
         ..body = response.data
         ..size = utf8.encode(response.data.toString()).length;
+    } else {
+      httpResponse
+        ..body = ''
+        ..size = 0;
     }
 
     httpResponse.time = DateTime.now();
@@ -129,21 +134,23 @@ class AliceDioAdapter extends InterceptorsWrapper with AliceAdapter {
 
     aliceCore.addError(httpError, error.requestOptions.hashCode);
     final httpResponse = AliceHttpResponse()..time = DateTime.now();
+
     if (error.response == null) {
       httpResponse.status = -1;
       aliceCore.addResponse(httpResponse, error.requestOptions.hashCode);
     } else {
       httpResponse.status = error.response!.statusCode;
 
-      if (error.response!.data == null) {
-        httpResponse
-          ..body = ''
-          ..size = 0;
-      } else {
+      if (error.response!.data != null) {
         httpResponse
           ..body = error.response!.data
           ..size = utf8.encode(error.response!.data.toString()).length;
+      } else {
+        httpResponse
+          ..body = ''
+          ..size = 0;
       }
+
       final headers = <String, String>{};
       error.response!.headers.forEach((header, values) {
         headers[header] = values.toString();
