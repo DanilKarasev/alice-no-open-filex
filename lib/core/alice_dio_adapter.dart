@@ -16,7 +16,9 @@ class AliceDioAdapter extends InterceptorsWrapper with AliceAdapter {
   /// Won't store payload/response data in release mode to:
   /// 1. reduce memory usage
   /// 2. HIPAA compliance
-  static const bool includeAPIDetails = !kReleaseMode;
+  final bool includeAPIDetails;
+
+  AliceDioAdapter({this.includeAPIDetails = !kReleaseMode});
 
   /// Handles dio request and creates alice http call based on it
   @override
